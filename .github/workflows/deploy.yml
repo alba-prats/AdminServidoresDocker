@@ -89,14 +89,14 @@ jobs:
           PUBLIC_PORT=${{ env.PUBLIC_PORT }}
           EOF
 
-      # 6. Copiar todos los archivos al VPS usando rsync (requiere rsync en el VPS)
-      #    También se puede usar scp, pero rsync es más eficiente
+      # 6. Copiar todos los archivos al VPS
       - name: Copiar archivos al VPS
         uses: burnett01/rsync-deployments@7.0.1
         with:
           switches: -avz --delete
           path: deploy-temp/
-          remote_path: /home/${{ secrets.VPS_USER }}/mi-proyecto/
+          # Quita la barra final "/" de la ruta remota
+          remote_path: /home/${{ secrets.VPS_USER }}/mi-proyecto
           remote_host: ${{ secrets.VPS_HOST }}
           remote_port: ${{ secrets.VPS_PORT }}
           remote_user: ${{ secrets.VPS_USER }}
