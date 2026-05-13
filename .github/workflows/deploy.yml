@@ -105,16 +105,16 @@ jobs:
       # 7. Conectarse por SSH al VPS y levantar los contenedores
       - name: Desplegar con Docker Compose en el VPS
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          TARGET_DIR: /home/${{ secrets.VPS_USER }}/mi-proyecto
-          GHCR_USER: ${{ github.actor }}
-          GHCR_PAT: ${{ secrets.GHCR_PAT }}
         with:
           host: ${{ secrets.VPS_HOST }}
-          # ... resto de credenciales
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          # IMPORTANTE: Debes listar aquí qué variables de 'env' quieres pasar al VPS
+          envs: TARGET_DIR,GHCR_USER,GHCR_PAT
           script: |
-            # Usar la variable de entorno directamente
-            cd "$TARGET_DIR" || exit 1
+            # Ahora $TARGET_DIR tendrá el valor correcto
+            cd "$TARGET_DIR" || { echo "No se pudo encontrar el directorio $TARGET_DIR"; exit 1; }
 
             # Autenticarse
             echo "$GHCR_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
@@ -123,3 +123,7 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
+        env:
+          TARGET_DIR: /home/${{ secrets.VPS_USER }}/mi-proyecto
+          GHCR_USER: ${{ github.actor }}
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
