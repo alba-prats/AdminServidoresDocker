@@ -105,27 +105,21 @@ jobs:
       # 7. Conectarse por SSH al VPS y levantar los contenedores
       - name: Desplegar con Docker Compose en el VPS
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          TARGET_DIR: /home/${{ secrets.VPS_USER }}/mi-proyecto
+          GHCR_USER: ${{ github.actor }}
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
         with:
           host: ${{ secrets.VPS_HOST }}
-          port: ${{ secrets.VPS_PORT }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          # ... resto de credenciales
           script: |
-            cd /home/${{ secrets.VPS_USER }}/mi-proyecto
+            # Usar la variable de entorno directamente
+            cd "$TARGET_DIR" || exit 1
 
-            # Autenticarse en GHCR para poder descargar la imagen privada
-            echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # Autenticarse
+            echo "$GHCR_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            # Descargar la última versión de la imagen web
-            docker compose pull web
-
-            # (Opcional) También se pueden actualizar las imágenes de Postgres, Redis y Nginx
-            docker compose pull db cache proxy
-
-            # Levantar (o recrear) todos los servicios
-            # -d: modo detached (en segundo plano)
-            # --remove-orphans: elimina contenedores que ya no están en el compose
+            # Ejecutar comandos
+            docker compose pull
             docker compose up -d --remove-orphans
-
-            # Limpiar imágenes viejas que ya no se usan (ahorra espacio)
             docker image prune -f
