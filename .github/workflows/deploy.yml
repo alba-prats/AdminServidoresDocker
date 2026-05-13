@@ -89,20 +89,27 @@ jobs:
           PUBLIC_PORT=${{ env.PUBLIC_PORT }}
           EOF
 
-      # 6. Copiar todos los archivos al VPS
+      # 6. Crear la carpeta en el VPS si no existe
+      - name: Crear directorio remoto
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: mkdir -p /home/${{ secrets.VPS_USER }}/mi-proyecto
+      # 7. Copiar todos los archivos al VPS
       - name: Copiar archivos al VPS
         uses: burnett01/rsync-deployments@7.0.1
         with:
           switches: -avz --delete
           path: deploy-temp/
-          # Quita la barra final "/" de la ruta remota
           remote_path: /home/${{ secrets.VPS_USER }}/mi-proyecto
           remote_host: ${{ secrets.VPS_HOST }}
           remote_port: ${{ secrets.VPS_PORT }}
           remote_user: ${{ secrets.VPS_USER }}
           remote_key: ${{ secrets.VPS_SSH_KEY }}
-
-      # 7. Conectarse por SSH al VPS y levantar los contenedores
+      # 8. Desplegar con Docker Compose
       - name: Desplegar con Docker Compose en el VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -110,16 +117,13 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          # IMPORTANTE: Debes listar aquí qué variables de 'env' quieres pasar al VPS
           envs: TARGET_DIR,GHCR_USER,GHCR_PAT
           script: |
-            # Ahora $TARGET_DIR tendrá el valor correcto
-            cd "$TARGET_DIR" || { echo "No se pudo encontrar el directorio $TARGET_DIR"; exit 1; }
-
-            # Autenticarse
+            # Asegurar que estamos en el directorio correcto
+            mkdir -p "$TARGET_DIR"
+            cd "$TARGET_DIR" || exit 1
+            # Autenticarse y desplegar
             echo "$GHCR_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-
-            # Ejecutar comandos
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
